@@ -452,7 +452,43 @@ local function StartAutoSell()
 	sellLoopGen = sellLoopGen + 1
 	local gen = sellLoopGen
 	task.spawn(function()
-		print("[MS] AutoSell started")
+				print("[MS] AutoSell started")
+		-- IMMEDIATE SELL: if inv is already > 0, do a sell trip right away
+		task.spawn(function()
+			task.wait(0.5)
+			pcall(function()
+				if not Toggles["AutoSell"] or gen ~= sellLoopGen then return end
+				if not Remote then EnsureRemote() end
+				local char = LocalPlayer.Character
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				if not hrp then return end
+				local curInv = select(1, GetInventoryAmount())
+				if curInv and curInv > 0 then
+					local SavedPosition = hrp.Position
+					local SavedText = InventoryAmount and InventoryAmount.Text or ""
+					local t0 = os.clock()
+					while InventoryAmount and InventoryAmount.Text == SavedText
+						and os.clock() - t0 < 15
+						and Toggles["AutoSell"] do
+						local c = LocalPlayer.Character
+						local h = c and c:FindFirstChild("HumanoidRootPart")
+						if not h then break end
+						h.CFrame = SellArea
+						Remote:FireServer("SellItems", {{}})
+						task.wait(0.1)
+					end
+					local c2 = LocalPlayer.Character
+					local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
+					if h2 then
+						h2.Anchored = true
+						h2.CFrame = CFrame.new(SavedPosition)
+						task.wait(0.1)
+						h2.Anchored = false
+					end
+					print("[MS] Immediate sell trip done")
+				end
+			end)
+		end)
 		while Toggles["AutoSell"] and gen == sellLoopGen do
 			local ok, err = pcall(function()
 				if not Remote then EnsureRemote() end
@@ -467,7 +503,9 @@ local function StartAutoSell()
 				if sellTrip then task.wait(0.3) return end
 				local curInv, curMax = GetInventoryAmount()
 				if not curMax or curMax <= 0 then task.wait(0.5) return end
-				local triggerAt = math.floor(curMax * 0.95)
+				-- Sell as soon as backpack is 100% full (like old script)
+				-- If you set a Sell Threshold in the UI, that value overrides
+				local triggerAt = SELL_TRESHOLD or curMax
 									if curInv >= triggerAt then
 						local SavedPosition = HumanoidRootPart.Position
 						sellTrip = true
