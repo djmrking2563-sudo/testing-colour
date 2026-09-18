@@ -5,7 +5,7 @@ local SellTreshold = (type(getgenv().SellTreshold) == "number" and getgenv().Sel
 local Depth = getgenv().Depth or 205
 getgenv().SellTreshold = SELL_TRESHOLD
 getgenv().Depth = Depth
-local SellArea = CFrame.new(<X>, <Y>, <Z>) 
+-- (SellArea removed — sell pads are per-area now)
 local recovering = false
 local areaTransit = false
 local rebirthDigging = false
@@ -345,6 +345,50 @@ local function GetInventoryAmount()
 	return tonumber(Inventory[1]) or 0, tonumber(Inventory[2]) or 0
 end
 
+
+-- ===== PER-AREA SELL PADS =====
+local SELL_PADS = {
+	Cyber       = Vector3.new(56, 14, 30176),
+	-- Add more areas as you find their pads:
+	-- Spawn    = Vector3.new(...),
+	-- Space    = Vector3.new(...),
+	-- Candy    = Vector3.new(...),
+	-- Toy      = Vector3.new(...),
+	-- Food     = Vector3.new(...),
+	-- Dino     = Vector3.new(...),
+	-- Sea      = Vector3.new(...),
+	-- Beach    = Vector3.new(...),
+	-- Cavern   = Vector3.new(...),
+	-- MagicForest = Vector3.new(...),
+}
+
+local function GetSellPadPos()
+	if lastAreaName and SELL_PADS[lastAreaName] then
+		return SELL_PADS[lastAreaName]
+	end
+	return Vector3.new(56, 14, 30176)
+end
+
+local function HopOntoSellPad()
+	local char = LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hum or not hrp then return false end
+	local padCF = CFrame.new(GetSellPadPos())
+	hrp.Anchored = true
+	hrp.CFrame = padCF + Vector3.new(0, 0.5, 0)
+	task.wait(0.25)
+	hrp.Anchored = false
+	hum.Jump = true
+	task.wait(0.2)
+	hrp.Anchored = true
+	hrp.CFrame = padCF
+	task.wait(0.3)
+	hrp.Anchored = false
+	return true
+end
+-- ===== END SELL PADS =====
+
 local function StartAutoMine()
 	-- 🔧 Reset stuck state
 	pcall(function()
@@ -453,12 +497,11 @@ local function StartAutoSell()
 	local gen = sellLoopGen
 	task.spawn(function()
 				print("[MS] AutoSell started")
-		-- IMMEDIATE SELL: if inv is already > 0, do a sell trip right away
+				-- IMMEDIATE SELL: if inv is already > 0, do a sell trip right away
 		task.spawn(function()
 			task.wait(0.5)
 			pcall(function()
 				if not Toggles["AutoSell"] or gen ~= sellLoopGen then return end
-				if not Remote then EnsureRemote() end
 				local char = LocalPlayer.Character
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 				if not hrp then return end
@@ -466,21 +509,12 @@ local function StartAutoSell()
 				if curInv and curInv > 0 then
 					local SavedPosition = hrp.Position
 					local SavedText = InventoryAmount and InventoryAmount.Text or ""
+					HopOntoSellPad()
 					local t0 = os.clock()
-										-- anchor at sell pad so physics doesn't drag us back
-					local cA = LocalPlayer.Character
-					local hA = cA and cA:FindFirstChild("HumanoidRootPart")
-					if hA then hA.Anchored = true; hA.CFrame = SellArea end
-
 					while InventoryAmount and InventoryAmount.Text == SavedText
-						and os.clock() - t0 < 15
+						and os.clock() - t0 < 5
 						and Toggles["AutoSell"] do
-						local c = LocalPlayer.Character
-						local h = c and c:FindFirstChild("HumanoidRootPart")
-						if not h then break end
-						h.CFrame = SellArea
-						Remote:FireServer("SellItems", {{}})
-						task.wait(0.2)
+						task.wait(0.15)
 					end
 					local c2 = LocalPlayer.Character
 					local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
@@ -494,6 +528,7 @@ local function StartAutoSell()
 				end
 			end)
 		end)
+
 		while Toggles["AutoSell"] and gen == sellLoopGen do
 			local ok, err = pcall(function()
 				if not Remote then EnsureRemote() end
@@ -511,22 +546,19 @@ local function StartAutoSell()
 				-- Sell as soon as backpack is 100% full (like old script)
 				-- If you set a Sell Threshold in the UI, that value overrides
 				local triggerAt = SELL_TRESHOLD or curMax
-									if curInv >= triggerAt then
+														
+			if curInv >= triggerAt then
 						local SavedPosition = HumanoidRootPart.Position
 						sellTrip = true
 											local SavedText = InventoryAmount and InventoryAmount.Text or ""
 						local sellStartTime = os.clock()
+						HopOntoSellPad()
 						while InventoryAmount and InventoryAmount.Text == SavedText
-							and os.clock() - sellStartTime < 15
+							and os.clock() - sellStartTime < 5
 							and not recovering and not collapseRecovering
 							and Toggles["AutoSell"]
 						do
-							local freshChar = LocalPlayer.Character
-							local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
-							if not freshHRP then break end
-							freshHRP.CFrame = SellArea
-							Remote:FireServer("SellItems", {{}})
-							task.wait(0.1)
+							task.wait(0.15)
 						end
 					if true then
 						local freshChar = LocalPlayer.Character
@@ -648,29 +680,17 @@ local function StartAutoRebirth()
 							task.wait()
 						end
 												if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
-											if sellTrip then task.wait(0.3) else
+																						if sellTrip then task.wait(0.3) else
 						local SavedPosition = HumanoidRootPart.Position
 						sellTrip = true
 						local SavedText = InventoryAmount and InventoryAmount.Text or ""
 						local sellStartTime = os.clock()
-												-- anchor at sell pad before firing
-						do
-							local freshChar = LocalPlayer.Character
-							local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
-							if freshHRP then freshHRP.Anchored = true; freshHRP.CFrame = SellArea end
-						end
-
+						HopOntoSellPad()
 						while InventoryAmount and InventoryAmount.Text == SavedText
-							and os.clock() - sellStartTime < 15
+							and os.clock() - sellStartTime < 5
 							and not recovering and not collapseRecovering
-							and Toggles["AutoSell"]
 						do
-							local freshChar = LocalPlayer.Character
-							local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
-							if not freshHRP then break end
-							freshHRP.CFrame = SellArea
-							Remote:FireServer("SellItems", {{}})
-							task.wait(0.2)
+							task.wait(0.15)
 						end
 						local freshChar = LocalPlayer.Character
 						local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
