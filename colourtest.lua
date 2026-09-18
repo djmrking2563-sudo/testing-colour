@@ -568,8 +568,9 @@ local function StartAutoSell()
 			end)
 		end)
 
-		while Toggles["AutoSell"] and gen == sellLoopGen do
+				while gen == sellLoopGen do
 			local ok, err = pcall(function()
+				if not Toggles["AutoSell"] then task.wait(0.5) return end
 				if not Remote then EnsureRemote() end
 				if (rebirthDigging and Toggles["AutoRebirth"]) or areaTransit or recovering or collapseRecovering then
 					task.wait(0.5)
