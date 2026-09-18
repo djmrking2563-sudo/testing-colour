@@ -379,34 +379,47 @@ local function HopOntoSellPad()
 
 	local padPos = GetSellPadPos()
 
-	-- 1. Teleport to a spot ~6 studs to the side of the pad
-	local approachPos = padPos + Vector3.new(6, 3, 0)
+	-- 1. Anchor + teleport to pad (game can't yank anchored HRP)
 	hrp.Anchored = true
-	hrp.CFrame = CFrame.new(approachPos)
-	task.wait(0.3)
+	hrp.CFrame = CFrame.new(padPos)
+	task.wait(0.5)
 	hrp.Anchored = false
+	task.wait(0.3)
 
-	-- 2. Make sure humanoid can walk
-	hum.WalkSpeed = 16
-	hum.JumpPower = 50
-
-	-- 3. Walk onto the pad using MoveTo (triggers Touched)
-	hum:MoveTo(padPos)
+	-- 2. Jitter back and forth for up to 4s (or until backpack empties)
 	local t0 = os.clock()
-	while os.clock() - t0 < 3 do
+	local dir = 1
+	local step = 1.5
+	local interval = 0.12
+
+	while os.clock() - t0 < 4 do
 		local c = LocalPlayer.Character
 		local h = c and c:FindFirstChild("HumanoidRootPart")
 		if not h then break end
-		if (h.Position - padPos).Magnitude < 2.5 then break end
-		task.wait(0.1)
+
+		local offset = Vector3.new(step * dir, 0, 0)
+		dir = -dir
+
+		h.Anchored = true
+		h.CFrame = CFrame.new(padPos) + offset
+		task.wait(interval)
+		h.Anchored = false
+		task.wait(0.05)
+
+		-- exit early if backpack emptied
+		local cur = select(1, GetInventoryAmount())
+		if cur == 0 then break end
 	end
 
-	-- 4. Hold on the pad
-	hum:MoveTo(padPos)
-	task.wait(1.5)
-
-	-- 5. Stop
-	hum:MoveTo(hrp.Position)
+	-- 3. Final settle on pad, release anchor
+	local c2 = LocalPlayer.Character
+	local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
+	if h2 then
+		h2.Anchored = true
+		h2.CFrame = CFrame.new(padPos)
+		task.wait(0.2)
+		h2.Anchored = false
+	end
 	return true
 end
 -- ===== END SELL PADS =====
