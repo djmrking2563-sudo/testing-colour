@@ -319,30 +319,32 @@ local function GetCoinsAmount()
 end
 
 local function resolveInventoryLabel()
-	if InventoryAmount and InventoryAmount.Text then return InventoryAmount end
-	pcall(function()
-		local sg = LocalPlayer.PlayerGui:FindFirstChild("ScreenGui")
-		if sg then
-			local sf2 = sg:FindFirstChild("StatsFrame") or sg:FindFirstChild("StatsFrame2")
-			local inv = sf2 and sf2:FindFirstChild("Inventory")
+	-- always re-find — never trust a cached reference
+	local sg = LocalPlayer.PlayerGui:FindFirstChild("ScreenGui")
+	if not sg then return nil end
+
+	-- prefer StatsFrame (main), then StatsFrame2 (secondary)
+	for _, frameName in ipairs({"StatsFrame", "StatsFrame2"}) do
+		local sf = sg:FindFirstChild(frameName)
+		if sf then
+			local inv = sf:FindFirstChild("Inventory")
 			local amt = inv and inv:FindFirstChild("Amount")
-			if amt and amt.Text then InventoryAmount = amt return amt end
-			local deepInv = sg:FindFirstChild("Inventory", true)
-			local deepAmt = deepInv and deepInv:FindFirstChild("Amount")
-			if deepAmt and deepAmt.Text then InventoryAmount = deepAmt return deepAmt end
+			if amt and amt.Text and amt.Text:find("/") then
+				InventoryAmount = amt  -- refresh cache
+				return amt
+			end
 		end
-	end)
-	return InventoryAmount
+	end
+	return nil
 end
 
 local function GetInventoryAmount()
 	local lbl = resolveInventoryLabel()
 	if not lbl or not lbl.Text then return 0, 0 end
-	local Amount = tostring(lbl.Text)
-	Amount = Amount:gsub('%s+', '')
-	Amount = Amount:gsub(',', '')
-	local Inventory = Amount:split("/")
-	return tonumber(Inventory[1]) or 0, tonumber(Inventory[2]) or 0
+	-- handle commas, spaces, and any non-digit noise
+	local cleaned = tostring(lbl.Text):gsub(",", ""):gsub("%s+", "")
+	local cur, max = cleaned:match("(%d+)/(%d+)")
+	return tonumber(cur) or 0, tonumber(max) or 0
 end
 
 
