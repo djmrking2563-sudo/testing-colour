@@ -606,9 +606,8 @@ local function StartAutoSell()
 				-- If you set a Sell Threshold in the UI, that value overrides
 				local triggerAt = SELL_TRESHOLD or curMax
 														
-			if curInv >= triggerAt then
+						if curInv >= triggerAt then
 						local SavedPosition = HumanoidRootPart.Position
-						sellTrip = true
 											local SavedText = InventoryAmount and InventoryAmount.Text or ""
 						local sellStartTime = os.clock()
 						HopOntoSellPad()
@@ -739,9 +738,8 @@ local function StartAutoRebirth()
 							task.wait()
 						end
 												if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
-																						if sellTrip then task.wait(0.3) else
+																																												if sellTrip then task.wait(0.3) else
 						local SavedPosition = HumanoidRootPart.Position
-						sellTrip = true
 						local SavedText = InventoryAmount and InventoryAmount.Text or ""
 						local sellStartTime = os.clock()
 						HopOntoSellPad()
