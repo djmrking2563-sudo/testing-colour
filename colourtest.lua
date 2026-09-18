@@ -377,52 +377,54 @@ local function HopOntoSellPad()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hum or not hrp then return false end
 
-	-- CRITICAL: flag sell trip so the collapse watchdog doesn't interrupt
 	sellTrip = true
 
-	local padPos = GetSellPadPos()
+	local ok, err = pcall(function()
+		local padPos = GetSellPadPos()
 
-	-- 1. Anchor + teleport to pad (game can't yank anchored HRP)
-	hrp.Anchored = true
-	hrp.CFrame = CFrame.new(padPos)
-	task.wait(0.5)
-	hrp.Anchored = false
-	task.wait(0.3)
+		hrp.Anchored = true
+		hrp.CFrame = CFrame.new(padPos)
+		task.wait(0.5)
+		hrp.Anchored = false
+		task.wait(0.3)
 
-	-- 2. Jitter back and forth for up to 4s (or until backpack empties)
-	local t0 = os.clock()
-	local dir = 1
-	local step = 1.5
-	local interval = 0.12
+		local t0 = os.clock()
+		local dir = 1
+		local step = 1.5
+		local interval = 0.12
 
-	while os.clock() - t0 < 4 do
-		local c = LocalPlayer.Character
-		local h = c and c:FindFirstChild("HumanoidRootPart")
-		if not h then break end
+		while os.clock() - t0 < 4 do
+			local c = LocalPlayer.Character
+			local h = c and c:FindFirstChild("HumanoidRootPart")
+			if not h then break end
 
-		local offset = Vector3.new(step * dir, 0, 0)
-		dir = -dir
+			local offset = Vector3.new(step * dir, 0, 0)
+			dir = -dir
 
-		h.Anchored = true
-		h.CFrame = CFrame.new(padPos) + offset
-		task.wait(interval)
-		h.Anchored = false
-		task.wait(0.05)
+			h.Anchored = true
+			h.CFrame = CFrame.new(padPos) + offset
+			task.wait(interval)
+			h.Anchored = false
+			task.wait(0.05)
 
-		-- exit early if backpack emptied
-		local cur = select(1, GetInventoryAmount())
-		if cur == 0 then break end
+			local cur = select(1, GetInventoryAmount())
+			if cur == 0 then break end
+		end
+
+		local c2 = LocalPlayer.Character
+		local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
+		if h2 then
+			h2.Anchored = true
+			h2.CFrame = CFrame.new(padPos)
+			task.wait(0.2)
+			h2.Anchored = false
+		end
+	end)
+
+	if not ok then
+		print("[MS] HopOntoSellPad error: " .. tostring(err))
 	end
 
-	-- 3. Final settle on pad, release anchor
-	local c2 = LocalPlayer.Character
-	local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
-	if h2 then
-		h2.Anchored = true
-		h2.CFrame = CFrame.new(padPos)
-		task.wait(0.2)
-		h2.Anchored = false
-	end
 	sellTrip = false
 	return true
 end
