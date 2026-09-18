@@ -537,10 +537,10 @@ local function StartAutoSell()
 	task.spawn(function()
 				print("[MS] AutoSell started")
 				-- IMMEDIATE SELL: if inv is already > 0, do a sell trip right away
-		task.spawn(function()
+				task.spawn(function()
 			task.wait(0.5)
 			pcall(function()
-				if not Toggles["AutoSell"] or gen ~= sellLoopGen then return end
+				if gen ~= sellLoopGen then return end
 				local char = LocalPlayer.Character
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 				if not hrp then return end
@@ -568,8 +568,9 @@ local function StartAutoSell()
 			end)
 		end)
 
-					while gen == sellLoopGen do
+				while getgenv().__MS_Gen == myGen do
 			local ok, err = pcall(function()
+				if not Toggles["AutoSell"] then task.wait(0.5) return end
 				if not Remote then EnsureRemote() end
 				if (rebirthDigging and Toggles["AutoRebirth"]) or areaTransit or recovering or collapseRecovering then
 					task.wait(0.5)
@@ -579,7 +580,14 @@ local function StartAutoSell()
 				local Character = LocalPlayer.Character
 				local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 				if not HumanoidRootPart then task.wait(0.5) return end
-				if sellTrip then task.wait(0.3) return end
+								if sellTrip then 
+					if os.clock() - sellDbgAt > 5 then
+						sellDbgAt = os.clock()
+						print("[MS] sellTrip stuck at true — waiting")
+					end
+					task.wait(0.3) 
+					return 
+				end
 				local curInv, curMax = GetInventoryAmount()
 				if not curMax or curMax <= 0 then task.wait(0.5) return end
 				-- Sell as soon as backpack is 100% full (like old script)
