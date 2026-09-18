@@ -376,17 +376,37 @@ local function HopOntoSellPad()
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hum or not hrp then return false end
-	local padCF = CFrame.new(GetSellPadPos())
+
+	local padPos = GetSellPadPos()
+
+	-- 1. Teleport to a spot ~6 studs to the side of the pad
+	local approachPos = padPos + Vector3.new(6, 3, 0)
 	hrp.Anchored = true
-	hrp.CFrame = padCF + Vector3.new(0, 0.5, 0)
-	task.wait(0.25)
-	hrp.Anchored = false
-	hum.Jump = true
-	task.wait(0.2)
-	hrp.Anchored = true
-	hrp.CFrame = padCF
+	hrp.CFrame = CFrame.new(approachPos)
 	task.wait(0.3)
 	hrp.Anchored = false
+
+	-- 2. Make sure humanoid can walk
+	hum.WalkSpeed = 16
+	hum.JumpPower = 50
+
+	-- 3. Walk onto the pad using MoveTo (triggers Touched)
+	hum:MoveTo(padPos)
+	local t0 = os.clock()
+	while os.clock() - t0 < 3 do
+		local c = LocalPlayer.Character
+		local h = c and c:FindFirstChild("HumanoidRootPart")
+		if not h then break end
+		if (h.Position - padPos).Magnitude < 2.5 then break end
+		task.wait(0.1)
+	end
+
+	-- 4. Hold on the pad
+	hum:MoveTo(padPos)
+	task.wait(1.5)
+
+	-- 5. Stop
+	hum:MoveTo(hrp.Position)
 	return true
 end
 -- ===== END SELL PADS =====
