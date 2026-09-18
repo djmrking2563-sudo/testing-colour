@@ -1164,7 +1164,7 @@ local function StartAutoTools()
 	end)
 end
 
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local WindUI = loadstring(game:HttpGet("https://cdn.jsdelivr.net/gh/Footagesus/WindUI@main/dist/main.lua"))()
 local function StopAreaRun()
 	areaRunId = areaRunId + 1
 	areaPhaseText = "off"
