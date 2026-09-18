@@ -377,6 +377,9 @@ local function HopOntoSellPad()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hum or not hrp then return false end
 
+	-- CRITICAL: flag sell trip so the collapse watchdog doesn't interrupt
+	sellTrip = true
+
 	local padPos = GetSellPadPos()
 
 	-- 1. Anchor + teleport to pad (game can't yank anchored HRP)
@@ -420,6 +423,7 @@ local function HopOntoSellPad()
 		task.wait(0.2)
 		h2.Anchored = false
 	end
+	sellTrip = false
 	return true
 end
 -- ===== END SELL PADS =====
