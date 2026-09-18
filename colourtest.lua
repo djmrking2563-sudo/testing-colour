@@ -615,12 +615,12 @@ local function StartAutoSell()
 					end
 					sellTrip = false
 					print("[MS] Sell trip done: inv now " .. tostring(select(1, GetInventoryAmount())) .. " coins " .. tostring(GetCoinsAmount()))
-				else
+								else
 					if os.clock() - sellDbgAt > 15 then
 						sellDbgAt = os.clock()
 						print("[MS] AutoSell waiting: inv " .. tostring(curInv) .. "/" .. tostring(curMax) .. " | trigger " .. tostring(triggerAt) .. " | remote " .. tostring(Remote ~= nil))
 					end
-					task.wait(0.5)
+					task.wait(0.25)   -- poll faster so we catch the moment it fills
 				end
 			end)
 			if not ok then
