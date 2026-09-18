@@ -63,11 +63,12 @@ local function ApplyAccent(root, accent)
 	local textCol = Color3.new(1, 0.94, 0.98)
 	local changed = 0
 
-	local function paint(inst)
+			local function paint(inst)
 		pcall(function()
-			-- Skip the game's own UI (only touch WindUI)
-			if inst:FindFirstAncestorOfClass("ScreenGui") and inst:FindFirstAncestorOfClass("ScreenGui").Name ~= "WindUI" then
-				-- but still descend if it might contain WindUI
+			-- Hard skip: anything not under a WindUI ScreenGui is ignored
+			local topGui = inst:FindFirstAncestorOfClass("ScreenGui")
+			if topGui and topGui.Name ~= "WindUI" and not topGui.Name:lower():find("wind") then
+				return
 			end
 
 			if inst:IsA("Frame") or inst:IsA("CanvasGroup") or inst:IsA("ScrollingFrame") then
@@ -113,12 +114,12 @@ local function PaintWindow(colorName)
 	end
 
 	-- PATH 1: WindUI's own ScreenGui, found via the Window object's Instance fields
+	-- This is the ONLY reliable source — WindUI stores a reference to its own ScreenGui.
 	pcall(function()
 		local win = getgenv().__MS_WindUIWindow
 		if not win then return end
 		for _, v in pairs(win) do
 			if typeof(v) == "Instance" then
-				-- only accept ScreenGuis (the WindUI GUI is a ScreenGui)
 				if v:IsA("ScreenGui") then
 					paintInstance(v)
 				elseif v.Parent and v.Parent:IsA("ScreenGui") then
@@ -128,21 +129,25 @@ local function PaintWindow(colorName)
 		end
 	end)
 
-	-- PATH 2: gethui() — ONLY the ScreenGui that contains WindUI's big frame
-	if gethui then
+	-- PATH 2: gethui() — but ONLY ScreenGuis whose PARENT is gethui itself
+	-- (WindUI's ScreenGui is a direct child of gethui on Delta;
+	--  any deeper nested ScreenGui is the game's own, so we skip it)
+	if gethui and painted == 0 then
 		pcall(function()
 			local hui = gethui()
 			if not hui then return end
 			for _, g in ipairs(hui:GetChildren()) do
 				if g:IsA("ScreenGui") and g.Name ~= "DeltaKeyboard" then
-					local hasBigFrame = false
-					for _, d in ipairs(g:GetDescendants()) do
-						if d:IsA("Frame") and d.AbsoluteSize.X > 350 and d.AbsoluteSize.Y > 250 then
-							hasBigFrame = true
-							break
+					-- Only accept if this ScreenGui has NO parent chain leading into CoreGui
+					local isGameGui = false
+					pcall(function()
+						local p = g.Parent
+						while p do
+							if p == game:GetService("CoreGui") then isGameGui = true break end
+							p = p.Parent
 						end
-					end
-					if hasBigFrame then
+					end)
+					if not isGameGui then
 						paintInstance(g)
 					end
 				end
@@ -150,24 +155,11 @@ local function PaintWindow(colorName)
 		end)
 	end
 
-	-- PATH 3: CoreGui + PlayerGui — ONLY ScreenGuis named "WindUI"
-	pcall(function()
-		for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
-			if g:IsA("ScreenGui") and g.Name:lower():find("wind") then
-				paintInstance(g)
-			end
-		end
-	end)
-	pcall(function()
-		for _, g in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
-			if g:IsA("ScreenGui") and g.Name:lower():find("wind") then
-				paintInstance(g)
-			end
-		end
-	end)
+	-- NO PATH 3 — CoreGui/PlayerGui are never touched.
 
 	print("[PaintWindow] painted " .. tostring(painted) .. " container(s) with " .. tostring(colorName))
 end
+
 
 local function DetectArea()
 	local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
