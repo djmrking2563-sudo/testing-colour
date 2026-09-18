@@ -5,7 +5,7 @@ local SellTreshold = (type(getgenv().SellTreshold) == "number" and getgenv().Sel
 local Depth = getgenv().Depth or 205
 getgenv().SellTreshold = SELL_TRESHOLD
 getgenv().Depth = Depth
-local SellArea = CFrame.new(-116, 13, 38)
+local SellArea = CFrame.new(<X>, <Y>, <Z>) 
 local recovering = false
 local areaTransit = false
 local rebirthDigging = false
