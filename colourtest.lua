@@ -542,83 +542,41 @@ local function StartSVSell()
 	local gen = svSellLoopGen
 	task.spawn(function()
 		print("[MS] SVSell started")
-		task.spawn(function()
-			task.wait(0.5)
-			pcall(function()
-				if gen ~= svSellLoopGen then return end
-				local char = LocalPlayer.Character
-				local hrp = char and char:FindFirstChild("HumanoidRootPart")
-				if not hrp then return end
-				local curInv, curMax = GetInventoryAmount()
-				if curInv and curMax and curMax > 0 and curInv >= curMax then
-					local SavedPosition = hrp.Position
-					local SavedText = InventoryAmount and InventoryAmount.Text or ""
-					HopOntoSellPad()
-					local t0 = os.clock()
-					while InventoryAmount and InventoryAmount.Text == SavedText
-						and os.clock() - t0 < 5
-						and Toggles["SVSell"] do
-						task.wait(0.15)
-					end
-					local c2 = LocalPlayer.Character
-					local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
-					if h2 then
-						h2.Anchored = true
-						h2.CFrame = CFrame.new(SavedPosition)
-						task.wait(0.1)
-						h2.Anchored = false
-					end
-					print("[MS] SVSell immediate trip done")
-				end
-			end)
-		end)
-
 		while getgenv().__MS_Gen == myGen do
 			local ok, err = pcall(function()
 				if not Toggles["SVSell"] then task.wait(0.5) return end
 				if not Remote then EnsureRemote() end
-				if areaTransit or recovering or collapseRecovering then
-					task.wait(0.5)
-					return
-				end
 				if not Remote then task.wait(1) return end
-				local Character = LocalPlayer.Character
-				local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-				if not HumanoidRootPart then task.wait(0.5) return end
-				if sellTrip then task.wait(0.3) return end
 				local curInv, curMax = GetInventoryAmount()
 				if not curMax or curMax <= 0 then task.wait(0.5) return end
 				local triggerAt = SELL_TRESHOLD or curMax
 				if curInv >= triggerAt then
-					local SavedPosition = HumanoidRootPart.Position
-					local SavedText = InventoryAmount and InventoryAmount.Text or ""
-					local sellStartTime = os.clock()
-					HopOntoSellPad()
-					while InventoryAmount and InventoryAmount.Text == SavedText
-						and os.clock() - sellStartTime < 5
-						and not recovering and not collapseRecovering
-						and Toggles["SVSell"]
-					do
-						task.wait(0.15)
-					end
-					local freshChar = LocalPlayer.Character
-					local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
-					if freshHRP then
-						for _ = 1, 5 do
-							freshHRP.CFrame = CFrame.new(SavedPosition)
-							task.wait(0.3)
-							freshChar = LocalPlayer.Character
-							freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
-							if freshHRP and (freshHRP.Position - SavedPosition).Magnitude <= 20 then break end
+					local Character = LocalPlayer.Character
+					local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+					if HumanoidRootPart then
+						local SavedLocation = HumanoidRootPart.CFrame
+						local SavedText = InventoryAmount and InventoryAmount.Text or ""
+						local sellStartTime = os.clock()
+						while InventoryAmount and InventoryAmount.Text == SavedText
+							and Toggles["SVSell"]
+							and os.clock() - sellStartTime < 15
+						do
+							HumanoidRootPart.CFrame = CFrame.new(-116, 13, 38)
+							Remote:FireServer("SellItems", {{}})
+							task.wait(0.1)
 						end
+						HumanoidRootPart.Anchored = true
+						HumanoidRootPart.CFrame = SavedLocation
+						task.wait(0.1)
+						HumanoidRootPart.Anchored = false
+						print("[MS] SVSell trip done: inv now " .. tostring(select(1, GetInventoryAmount())) .. " coins " .. tostring(GetCoinsAmount()))
 					end
-					print("[MS] SVSell trip done: inv now " .. tostring(select(1, GetInventoryAmount())) .. " coins " .. tostring(GetCoinsAmount()))
 				else
 					if os.clock() - sellDbgAt > 15 then
 						sellDbgAt = os.clock()
 						print("[MS] SVSell waiting: inv " .. tostring(curInv) .. "/" .. tostring(curMax))
 					end
-					task.wait(0.25)
+					task.wait(0.5)
 				end
 			end)
 			if not ok then
