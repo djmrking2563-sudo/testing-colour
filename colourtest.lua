@@ -52,12 +52,9 @@ end
 
 local function ApplyAccent(root, accent)
 	if not root then return end
-	-- Guard: only paint if the root name contains "wind" OR the root has WindUI-typical structure
-	-- (this keeps us from repainting the game's own HUD)
-	local rootName = ""
-	pcall(function() rootName = tostring(root.Name):lower() end)
-	local looksLikeWindUI = rootName:find("wind")
-		or rootName:find("delta") == nil and (#root:GetChildren() > 15)
+	-- Only proceed if root is a ScreenGui (WindUI's GUI is always a ScreenGui)
+	if not root:IsA("ScreenGui") then return end
+
 	-- if we can't tell, just paint anyway (better saafe than blank)
 
 	local bgDark  = shade(accent, 0.10)
@@ -115,41 +112,55 @@ local function PaintWindow(colorName)
 		end)
 	end
 
-	-- PATH 1: Window object (only works within same script run)
+	-- PATH 1: WindUI's own ScreenGui, found via the Window object's Instance fields
 	pcall(function()
 		local win = getgenv().__MS_WindUIWindow
 		if not win then return end
 		for _, v in pairs(win) do
 			if typeof(v) == "Instance" then
-				paintInstance(v)
+				-- only accept ScreenGuis (the WindUI GUI is a ScreenGui)
+				if v:IsA("ScreenGui") then
+					paintInstance(v)
+				elseif v.Parent and v.Parent:IsA("ScreenGui") then
+					paintInstance(v.Parent)
+				end
 			end
 		end
 	end)
 
-	-- PATH 2: gethui() — paint ALL ScreenGuis inside (Delta hides WindUI here with scrambled names)
+	-- PATH 2: gethui() — ONLY the ScreenGui that contains WindUI's big frame
 	if gethui then
 		pcall(function()
 			local hui = gethui()
 			if not hui then return end
 			for _, g in ipairs(hui:GetChildren()) do
 				if g:IsA("ScreenGui") and g.Name ~= "DeltaKeyboard" then
-					paintInstance(g)
+					local hasBigFrame = false
+					for _, d in ipairs(g:GetDescendants()) do
+						if d:IsA("Frame") and d.AbsoluteSize.X > 350 and d.AbsoluteSize.Y > 250 then
+							hasBigFrame = true
+							break
+						end
+					end
+					if hasBigFrame then
+						paintInstance(g)
+					end
 				end
 			end
 		end)
 	end
 
-	-- PATH 3: CoreGui + PlayerGui (any ScreenGui, no name filter)
+	-- PATH 3: CoreGui + PlayerGui — ONLY ScreenGuis named "WindUI"
 	pcall(function()
 		for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
-			if g:IsA("ScreenGui") then
+			if g:IsA("ScreenGui") and g.Name:lower():find("wind") then
 				paintInstance(g)
 			end
 		end
 	end)
 	pcall(function()
 		for _, g in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
-			if g:IsA("ScreenGui") then
+			if g:IsA("ScreenGui") and g.Name:lower():find("wind") then
 				paintInstance(g)
 			end
 		end
@@ -157,7 +168,6 @@ local function PaintWindow(colorName)
 
 	print("[PaintWindow] painted " .. tostring(painted) .. " container(s) with " .. tostring(colorName))
 end
-
 
 local function DetectArea()
 	local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
