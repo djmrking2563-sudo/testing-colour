@@ -371,11 +371,19 @@ local function GetSellPadPos()
 	return Vector3.new(56, 14, 30176)
 end
 
+local hopping = false
+
 local function HopOntoSellPad()
+	if hopping then return false end  -- prevent overlapping hops
+	hopping = true
+
 	local char = LocalPlayer.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not hum or not hrp then return false end
+	if not hum or not hrp then
+		hopping = false
+		return false
+	end
 
 	sellTrip = true
 
@@ -421,11 +429,12 @@ local function HopOntoSellPad()
 		end
 	end)
 
-	if not ok then
+		if not ok then
 		print("[MS] HopOntoSellPad error: " .. tostring(err))
 	end
 
 	sellTrip = false
+	hopping = false
 	return true
 end
 -- ===== END SELL PADS =====
@@ -539,15 +548,16 @@ local function StartAutoSell()
 	task.spawn(function()
 				print("[MS] AutoSell started")
 				-- IMMEDIATE SELL: if inv is already > 0, do a sell trip right away
-				task.spawn(function()
+						task.spawn(function()
 			task.wait(0.5)
 			pcall(function()
 				if gen ~= sellLoopGen then return end
 				local char = LocalPlayer.Character
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 				if not hrp then return end
-				local curInv = select(1, GetInventoryAmount())
-				if curInv and curInv > 0 then
+				-- Only do immediate sell if backpack is FULL, otherwise let the main loop handle it
+				local curInv, curMax = GetInventoryAmount()
+				if curInv and curMax and curMax > 0 and curInv >= curMax then
 					local SavedPosition = hrp.Position
 					local SavedText = InventoryAmount and InventoryAmount.Text or ""
 					HopOntoSellPad()
