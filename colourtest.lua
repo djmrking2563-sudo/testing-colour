@@ -467,6 +467,11 @@ local function StartAutoSell()
 					local SavedPosition = hrp.Position
 					local SavedText = InventoryAmount and InventoryAmount.Text or ""
 					local t0 = os.clock()
+										-- anchor at sell pad so physics doesn't drag us back
+					local cA = LocalPlayer.Character
+					local hA = cA and cA:FindFirstChild("HumanoidRootPart")
+					if hA then hA.Anchored = true; hA.CFrame = SellArea end
+
 					while InventoryAmount and InventoryAmount.Text == SavedText
 						and os.clock() - t0 < 15
 						and Toggles["AutoSell"] do
@@ -475,7 +480,7 @@ local function StartAutoSell()
 						if not h then break end
 						h.CFrame = SellArea
 						Remote:FireServer("SellItems", {{}})
-						task.wait(0.1)
+						task.wait(0.2)
 					end
 					local c2 = LocalPlayer.Character
 					local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
@@ -648,16 +653,24 @@ local function StartAutoRebirth()
 						sellTrip = true
 						local SavedText = InventoryAmount and InventoryAmount.Text or ""
 						local sellStartTime = os.clock()
+												-- anchor at sell pad before firing
+						do
+							local freshChar = LocalPlayer.Character
+							local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
+							if freshHRP then freshHRP.Anchored = true; freshHRP.CFrame = SellArea end
+						end
+
 						while InventoryAmount and InventoryAmount.Text == SavedText
 							and os.clock() - sellStartTime < 15
 							and not recovering and not collapseRecovering
+							and Toggles["AutoSell"]
 						do
 							local freshChar = LocalPlayer.Character
 							local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
 							if not freshHRP then break end
 							freshHRP.CFrame = SellArea
 							Remote:FireServer("SellItems", {{}})
-							task.wait(0.1)
+							task.wait(0.2)
 						end
 						local freshChar = LocalPlayer.Character
 						local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
