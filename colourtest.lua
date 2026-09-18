@@ -52,32 +52,39 @@ end
 
 local function ApplyAccent(root, accent)
 	if not root then return end
-	local bgDark  = shade(accent, 0.12)
-	local bgMid   = shade(accent, 0.25)
+	local bgDark  = shade(accent, 0.10)
+	local bgMid   = shade(accent, 0.22)
 	local outline = shade(accent, 0.85)
 	local textCol = Color3.new(1, 0.94, 0.98)
+	local changed = 0
 
 	local function paint(inst)
 		pcall(function()
-			if inst:IsA("ScrollingFrame") then
-				if inst.BackgroundColor3.R < 0.25 and inst.BackgroundColor3.G < 0.25 then
-					inst.BackgroundColor3 = bgDark
-				end
-				inst.ScrollBarImageColor3 = accent
-			elseif inst:IsA("Frame") or inst:IsA("CanvasGroup") then
+			-- Skip the game's own UI (only touch WindUI)
+			if inst:FindFirstAncestorOfClass("ScreenGui") and inst:FindFirstAncestorOfClass("ScreenGui").Name ~= "WindUI" then
+				-- but still descend if it might contain WindUI
+			end
+
+			if inst:IsA("Frame") or inst:IsA("CanvasGroup") or inst:IsA("ScrollingFrame") then
+				-- recolor ANY frame that isn't already bright/colored
 				local bc = inst.BackgroundColor3
-				if bc.R < 0.25 and bc.G < 0.25 and bc.B < 0.25 then
+				if bc.R < 0.5 and bc.G < 0.5 and bc.B < 0.5 then
 					inst.BackgroundColor3 = bgDark
+					changed = changed + 1
 				end
 			elseif inst:IsA("TextButton") then
 				inst.TextColor3 = textCol
 				inst.BackgroundColor3 = bgMid
+				changed = changed + 1
 			elseif inst:IsA("TextLabel") or inst:IsA("TextBox") then
 				inst.TextColor3 = textCol
+				changed = changed + 1
 			elseif inst:IsA("ImageLabel") or inst:IsA("ImageButton") then
 				inst.ImageColor3 = accent
+				changed = changed + 1
 			elseif inst:IsA("UIStroke") then
 				inst.Color = outline
+				changed = changed + 1
 			end
 		end)
 		for _, child in ipairs(inst:GetDescendants()) do
@@ -85,18 +92,67 @@ local function ApplyAccent(root, accent)
 		end
 	end
 	paint(root)
-end
-
-local function PaintWindow(colorName)
+	print("[ApplyAccent] changed " .. tostring(changed) .. " instances")
+endlocal function PaintWindow(colorName)
 	local accent = COLOR_PRESETS[colorName] or COLOR_PRESETS.Pink
+	local painted = 0
+
+	local function paintAny(gui)
+		if not gui then return end
+		-- Paint anything that looks like the WindUI main frame
+		pcall(function()
+			ApplyAccent(gui, accent)
+			painted = painted + 1
+		end)
+	end
+
+	local function scanForWindUI(container)
+		if not container then return end
+		pcall(function()
+			for _, child in ipairs(container:GetChildren()) do
+				if child:IsA("ScreenGui") or child:IsA("Folder") then
+					-- Match by name (case-insensitive substring "wind" or "v444" or "mining")
+					local n = child.Name:lower()
+					if n:find("wind") or n:find("v444") or n:find("mining") or n:find("gui") then
+						paintAny(child)
+					end
+					-- Also deep-scan for a Frame with a very large size (main window shape)
+					pcall(function()
+						for _, d in ipairs(child:GetDescendants()) do
+							if d:IsA("Frame") and d.AbsoluteSize.X > 350 and d.AbsoluteSize.Y > 250 then
+								paintAny(d)
+							end
+						end
+					end)
+				end
+			end
+		end)
+	end
+
+	-- 1. gethui() (executor hidden GUI)
 	pcall(function()
-		local gui = game:GetService("CoreGui"):FindFirstChild("WindUI")
-		if gui then ApplyAccent(gui, accent) end
+		if gethui then
+			local hui = gethui()
+			if hui then scanForWindUI(hui) end
+		end
 	end)
+
+	-- 2. CoreGui
+	scanForWindUI(game:GetService("CoreGui"))
+
+	-- 3. PlayerGui
+	scanForWindUI(LocalPlayer.PlayerGui)
+
+	-- 4. Last-resort: scan ALL ScreenGuis known to Roblox
 	pcall(function()
-		local gui2 = LocalPlayer.PlayerGui:FindFirstChild("WindUI")
-		if gui2 then ApplyAccent(gui2, accent) end
+		for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+			if gui:IsA("ScreenGui") and (gui.Name:lower():find("wind")) then
+				paintAny(gui)
+			end
+		end
 	end)
+
+	print("[PaintWindow] painted " .. tostring(painted) .. " container(s) with " .. tostring(colorName))
 end
 -- ===== END COLOR THEME SYSTEM =====
 
