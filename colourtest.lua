@@ -52,6 +52,14 @@ end
 
 local function ApplyAccent(root, accent)
 	if not root then return end
+	-- Guard: only paint if the root name contains "wind" OR the root has WindUI-typical structure
+	-- (this keeps us from repainting the game's own HUD)
+	local rootName = ""
+	pcall(function() rootName = tostring(root.Name):lower() end)
+	local looksLikeWindUI = rootName:find("wind")
+		or rootName:find("delta") == nil and (#root:GetChildren() > 15)
+	-- if we can't tell, just paint anyway (better saafe than blank)
+
 	local bgDark  = shade(accent, 0.10)
 	local bgMid   = shade(accent, 0.22)
 	local outline = shade(accent, 0.85)
@@ -99,64 +107,57 @@ local function PaintWindow(colorName)
 	local accent = COLOR_PRESETS[colorName] or COLOR_PRESETS.Pink
 	local painted = 0
 
-	local function paintAny(gui)
-		if not gui then return end
-		-- Paint anything that looks like the WindUI main frame
+	local function paintInstance(root)
+		if not root then return end
 		pcall(function()
-			ApplyAccent(gui, accent)
+			ApplyAccent(root, accent)
 			painted = painted + 1
 		end)
 	end
 
-	local function scanForWindUI(container)
-		if not container then return end
+	-- PATH 1: Window object (only works within same script run)
+	pcall(function()
+		local win = getgenv().__MS_WindUIWindow
+		if not win then return end
+		for _, v in pairs(win) do
+			if typeof(v) == "Instance" then
+				paintInstance(v)
+			end
+		end
+	end)
+
+	-- PATH 2: gethui() — paint ALL ScreenGuis inside (Delta hides WindUI here with scrambled names)
+	if gethui then
 		pcall(function()
-			for _, child in ipairs(container:GetChildren()) do
-				if child:IsA("ScreenGui") or child:IsA("Folder") then
-					-- Match by name (case-insensitive substring "wind" or "v444" or "mining")
-					local n = child.Name:lower()
-					if n:find("wind") or n:find("v444") or n:find("mining") or n:find("gui") then
-						paintAny(child)
-					end
-					-- Also deep-scan for a Frame with a very large size (main window shape)
-					pcall(function()
-						for _, d in ipairs(child:GetDescendants()) do
-							if d:IsA("Frame") and d.AbsoluteSize.X > 350 and d.AbsoluteSize.Y > 250 then
-								paintAny(d)
-							end
-						end
-					end)
+			local hui = gethui()
+			if not hui then return end
+			for _, g in ipairs(hui:GetChildren()) do
+				if g:IsA("ScreenGui") and g.Name ~= "DeltaKeyboard" then
+					paintInstance(g)
 				end
 			end
 		end)
 	end
 
-	-- 1. gethui() (executor hidden GUI)
+	-- PATH 3: CoreGui + PlayerGui (any ScreenGui, no name filter)
 	pcall(function()
-		if gethui then
-			local hui = gethui()
-			if hui then scanForWindUI(hui) end
+		for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
+			if g:IsA("ScreenGui") then
+				paintInstance(g)
+			end
 		end
 	end)
-
-	-- 2. CoreGui
-	scanForWindUI(game:GetService("CoreGui"))
-
-	-- 3. PlayerGui
-	scanForWindUI(LocalPlayer.PlayerGui)
-
-	-- 4. Last-resort: scan ALL ScreenGuis known to Roblox
 	pcall(function()
-		for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
-			if gui:IsA("ScreenGui") and (gui.Name:lower():find("wind")) then
-				paintAny(gui)
+		for _, g in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
+			if g:IsA("ScreenGui") then
+				paintInstance(g)
 			end
 		end
 	end)
 
 	print("[PaintWindow] painted " .. tostring(painted) .. " container(s) with " .. tostring(colorName))
 end
--- ===== END COLOR THEME SYSTEM =====
+
 
 local function DetectArea()
 	local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
