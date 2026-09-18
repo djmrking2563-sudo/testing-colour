@@ -93,7 +93,9 @@ local function ApplyAccent(root, accent)
 	end
 	paint(root)
 	print("[ApplyAccent] changed " .. tostring(changed) .. " instances")
-endlocal function PaintWindow(colorName)
+end
+
+local function PaintWindow(colorName)
 	local accent = COLOR_PRESETS[colorName] or COLOR_PRESETS.Pink
 	local painted = 0
 
