@@ -369,7 +369,7 @@ local function GetSellPadPos()
 	if lastAreaName and SELL_PADS[lastAreaName] then
 		return SELL_PADS[lastAreaName]
 	end
-	return Vector3.new(56, 14, 30176)
+	return Vector3.new(-116, 13, 38)
 end
 
 local function HopOntoSellPad()
@@ -377,6 +377,13 @@ local function HopOntoSellPad()
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hum or not hrp then
+		return false
+	end
+
+	-- only teleport if the backpack is actually full (or past sell threshold)
+	local curInv, curMax = GetInventoryAmount()
+	local triggerAt = SELL_TRESHOLD or curMax
+	if not curInv or not curMax or curMax <= 0 or curInv < triggerAt then
 		return false
 	end
 
@@ -784,11 +791,14 @@ local function StartAutoRebirth()
 							task.wait()
 						end
 												if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
-																																												if sellTrip then task.wait(0.3) else
-						local SavedPosition = HumanoidRootPart.Position
-						local SavedText = InventoryAmount and InventoryAmount.Text or ""
-						local sellStartTime = os.clock()
-						HopOntoSellPad()
+																																											if sellTrip then task.wait(0.3) else
+	local curInv, curMax = GetInventoryAmount()
+	local triggerAt = SELL_TRESHOLD or curMax
+	if curInv and curMax and curMax > 0 and curInv >= triggerAt then
+		local SavedPosition = HumanoidRootPart.Position
+		local SavedText = InventoryAmount and InventoryAmount.Text or ""
+		local sellStartTime = os.clock()
+		HopOntoSellPad()
 						while InventoryAmount and InventoryAmount.Text == SavedText
 							and os.clock() - sellStartTime < 5
 							and not recovering and not collapseRecovering
@@ -804,6 +814,7 @@ local function StartAutoRebirth()
 							freshHRP.Anchored = false
 						end
 						sellTrip = false
+					end
 					end
 					end
 				end
