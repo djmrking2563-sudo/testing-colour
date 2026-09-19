@@ -28,139 +28,9 @@ local Areas = {
 		{ name = "MagicForest", moveTo = nil,       spawn = Vector3.new(15, 15, 22461),   walkEnd = Vector3.new(16, 13, 22420),   mine = Vector3.new(17, 12, 22409) },
 }
 
--- ===== COLOR THEME SYSTEM =====
-local COLOR_PRESETS = {
-	Pink    = Color3.fromRGB(255, 105, 180),
-	HotPink = Color3.fromRGB(255, 20, 147),
-	Purple  = Color3.fromRGB(170, 90, 255),
-	Blue    = Color3.fromRGB(70, 150, 255),
-	Cyan    = Color3.fromRGB(0, 220, 220),
-	Green   = Color3.fromRGB(80, 220, 120),
-	Red     = Color3.fromRGB(255, 70, 70),
-	Orange  = Color3.fromRGB(255, 150, 40),
-	Yellow  = Color3.fromRGB(255, 220, 60),
-	White   = Color3.fromRGB(235, 235, 235),
-}
-
-local function shade(c, f)
-	return Color3.new(
-		math.clamp(c.R * f, 0, 1),
-		math.clamp(c.G * f, 0, 1),
-		math.clamp(c.B * f, 0, 1)
-	)
-end
-
-local function ApplyAccent(root, accent)
-	if not root then return end
-	-- Only proceed if root is a ScreenGui (WindUI's GUI is always a ScreenGui)
-	if not root:IsA("ScreenGui") then return end
-
-	-- if we can't tell, just paint anyway (better saafe than blank)
-
-	local bgDark  = shade(accent, 0.10)
-	local bgMid   = shade(accent, 0.22)
-	local outline = shade(accent, 0.85)
-	local textCol = Color3.new(1, 0.94, 0.98)
-	local changed = 0
-
-			local function paint(inst)
-		pcall(function()
-			-- Hard skip: anything not under a WindUI ScreenGui is ignored
-			local topGui = inst:FindFirstAncestorOfClass("ScreenGui")
-			if topGui and topGui.Name ~= "WindUI" and not topGui.Name:lower():find("wind") then
-				return
-			end
-
-			if inst:IsA("Frame") or inst:IsA("CanvasGroup") or inst:IsA("ScrollingFrame") then
-				-- recolor ANY frame that isn't already bright/colored
-				local bc = inst.BackgroundColor3
-				if bc.R < 0.5 and bc.G < 0.5 and bc.B < 0.5 then
-					inst.BackgroundColor3 = bgDark
-					changed = changed + 1
-				end
-			elseif inst:IsA("TextButton") then
-				inst.TextColor3 = textCol
-				inst.BackgroundColor3 = bgMid
-				changed = changed + 1
-			elseif inst:IsA("TextLabel") or inst:IsA("TextBox") then
-				inst.TextColor3 = textCol
-				changed = changed + 1
-			elseif inst:IsA("ImageLabel") or inst:IsA("ImageButton") then
-				inst.ImageColor3 = accent
-				changed = changed + 1
-			elseif inst:IsA("UIStroke") then
-				inst.Color = outline
-				changed = changed + 1
-			end
-		end)
-		for _, child in ipairs(inst:GetDescendants()) do
-			paint(child)
-		end
-	end
-	paint(root)
-	print("[ApplyAccent] changed " .. tostring(changed) .. " instances")
-end
-
-local function PaintWindow(colorName)
-	local accent = COLOR_PRESETS[colorName] or COLOR_PRESETS.Pink
-	local painted = 0
-
-	local function paintInstance(root)
-		if not root then return end
-		pcall(function()
-			ApplyAccent(root, accent)
-			painted = painted + 1
-		end)
-	end
-
-	-- PATH 1: WindUI's own ScreenGui, found via the Window object's Instance fields
-	-- This is the ONLY reliable source — WindUI stores a reference to its own ScreenGui.
-	pcall(function()
-		local win = getgenv().__MS_WindUIWindow
-		if not win then return end
-		for _, v in pairs(win) do
-			if typeof(v) == "Instance" then
-				if v:IsA("ScreenGui") then
-					paintInstance(v)
-				elseif v.Parent and v.Parent:IsA("ScreenGui") then
-					paintInstance(v.Parent)
-				end
-			end
-		end
-	end)
-
-	-- PATH 2: gethui() — but ONLY ScreenGuis whose PARENT is gethui itself
-	-- (WindUI's ScreenGui is a direct child of gethui on Delta;
-	--  any deeper nested ScreenGui is the game's own, so we skip it)
-	if gethui and painted == 0 then
-		pcall(function()
-			local hui = gethui()
-			if not hui then return end
-			for _, g in ipairs(hui:GetChildren()) do
-				if g:IsA("ScreenGui") and g.Name ~= "DeltaKeyboard" then
-					-- Only accept if this ScreenGui has NO parent chain leading into CoreGui
-					local isGameGui = false
-					pcall(function()
-						local p = g.Parent
-						while p do
-							if p == game:GetService("CoreGui") then isGameGui = true break end
-							p = p.Parent
-						end
-					end)
-					if not isGameGui then
-						paintInstance(g)
-					end
-				end
-			end
-		end)
-	end
-
-	-- NO PATH 3 — CoreGui/PlayerGui are never touched.
-
-	print("[PaintWindow] painted " .. tostring(painted) .. " container(s) with " .. tostring(colorName))
-end
 
 
+	
 local function DetectArea()
 	local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 	if not h then return nil end
@@ -1628,26 +1498,12 @@ local Window = WindUI:CreateWindow({
 })
 getgenv().__MS_WindUIWindow = Window
 
-task.spawn(function()
-	task.wait(1.2)
-	PaintWindow(getgenv().__MS_Color or "Pink")
-end)
 
 local MineTab = Window:Tab({ Title = "Mining", Icon = "pickaxe" })
 local SellTab = Window:Tab({ Title = "Sell", Icon = "coins" })
 local MiscTab = Window:Tab({ Title = "Shop / Rebirth", Icon = "settings" })
 local AreasTab = Window:Tab({ Title = "Areas", Icon = "map" })
 
-AreasTab:Dropdown({
-	Title = "Theme Color",
-	Desc = "Change the GUI color",
-	Values = { "Pink", "HotPink", "Purple", "Blue", "Cyan", "Green", "Red", "Orange", "Yellow", "White" },
-	Value = getgenv().__MS_Color or "Pink",
-	Callback = function(selected)
-		getgenv().__MS_Color = selected
-		PaintWindow(selected)
-	end
-})
 
 MineTab:Toggle({
 	Title = "Auto Mine (straight down)",
