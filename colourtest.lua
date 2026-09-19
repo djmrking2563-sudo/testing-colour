@@ -156,7 +156,6 @@ pcall(function()
 end)
 
 local Toggles = getgenv().__MS_Toggles or {
-	AutoSell = false,
 	FastMine = false,
 	AutoMine = false,
 	AutoBackpack = false,
@@ -173,7 +172,6 @@ local myGen = getgenv().__MS_Gen
 local buyPause, buyPauseAt = false, 0
 local lastMineSpot = nil
 local sellTrip = false
-local sellLoopGen = 0
 local sellDbgAt = 0
 
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
@@ -466,114 +464,6 @@ local function StartSVSell()
 	end)
 end
 
-local function StartAutoSell()
-	sellLoopGen = sellLoopGen + 1
-	local gen = sellLoopGen
-	task.spawn(function()
-		print("[MS] AutoSell started")
-				-- IMMEDIATE SELL: if inv is already > 0, do a sell trip right away
-						task.spawn(function()
-			task.wait(0.5)
-			pcall(function()
-				if gen ~= sellLoopGen then return end
-				local char = LocalPlayer.Character
-				local hrp = char and char:FindFirstChild("HumanoidRootPart")
-				if not hrp then return end
-								local curInv = select(1, GetInventoryAmount())
-				if curInv and curInv > 0 then
-					local SavedPosition = hrp.Position
-					local SavedText = InventoryAmount and InventoryAmount.Text or ""
-					HopOntoSellPad()
-					local t0 = os.clock()
-					while InventoryAmount and InventoryAmount.Text == SavedText
-						and os.clock() - t0 < 5
-						and Toggles["AutoSell"] do
-						task.wait(0.15)
-					end
-					local c2 = LocalPlayer.Character
-					local h2 = c2 and c2:FindFirstChild("HumanoidRootPart")
-					if h2 then
-						h2.Anchored = true
-						h2.CFrame = CFrame.new(SavedPosition)
-						task.wait(0.1)
-						h2.Anchored = false
-					end
-					print("[MS] Immediate sell trip done")
-				end
-			end)
-		end)
-
-				while getgenv().__MS_Gen == myGen do
-			local ok, err = pcall(function()
-				if not Toggles["AutoSell"] then task.wait(0.5) return end
-				if not Remote then EnsureRemote() end
-				if (rebirthDigging and Toggles["AutoRebirth"]) or areaTransit or recovering or collapseRecovering then
-					task.wait(0.5)
-					return
-				end
-				if not Remote then task.wait(1) return end
-				local Character = LocalPlayer.Character
-				local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-				if not HumanoidRootPart then task.wait(0.5) return end
-								if sellTrip then 
-					if os.clock() - sellDbgAt > 5 then
-						sellDbgAt = os.clock()
-						print("[MS] sellTrip stuck at true — waiting")
-					end
-					task.wait(0.3) 
-					return 
-				end
-				local curInv, curMax = GetInventoryAmount()
-				if not curMax or curMax <= 0 then task.wait(0.5) return end
-				-- Sell as soon as backpack is 100% full (like old script)
-				-- If you set a Sell Threshold in the UI, that value overrides
-				local triggerAt = SELL_TRESHOLD or curMax
-														
-						if curInv >= triggerAt then
-						local SavedPosition = HumanoidRootPart.Position
-											local SavedText = InventoryAmount and InventoryAmount.Text or ""
-						local sellStartTime = os.clock()
-						HopOntoSellPad()
-						while InventoryAmount and InventoryAmount.Text == SavedText
-							and os.clock() - sellStartTime < 5
-							and not recovering and not collapseRecovering
-							and Toggles["AutoSell"]
-						do
-							task.wait(0.15)
-						end
-					if true then
-						local freshChar = LocalPlayer.Character
-						local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
-						if freshHRP then
-							for _ = 1, 5 do
-								freshHRP.CFrame = CFrame.new(SavedPosition)
-								task.wait(0.3)
-								freshChar = LocalPlayer.Character
-								freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
-								if freshHRP and (freshHRP.Position - SavedPosition).Magnitude <= 20 then break end
-							end
-						end
-					end
-					sellTrip = false
-					print("[MS] Sell trip done: inv now " .. tostring(select(1, GetInventoryAmount())) .. " coins " .. tostring(GetCoinsAmount()))
-								else
-					if os.clock() - sellDbgAt > 15 then
-						sellDbgAt = os.clock()
-						print("[MS] AutoSell waiting: inv " .. tostring(curInv) .. "/" .. tostring(curMax) .. " | trigger " .. tostring(triggerAt) .. " | remote " .. tostring(Remote ~= nil))
-					end
-					task.wait(0.25)   -- poll faster so we catch the moment it fills
-				end
-			end)
-			if not ok then
-				print("[MS] AutoSell error: " .. tostring(err))
-				pcall(function() sellTrip = false end)
-				task.wait(1)
-			end
-			task.wait()
-		end
-		print("[MS] AutoSell off")
-	end)
-end
 local rebirthRunId = 0
 local rebirthPhaseText = "off"
 rebirthDigging = false
@@ -1363,7 +1253,7 @@ local function RecoverFromCollapse(reason)
 	collapseGen = collapseGen + 1
 	local gen = collapseGen
 	if collapseRecovering then return end
-	if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or Toggles["AutoSell"]) then return end
+if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or Toggles["SVSell"]) then return end
 
 	collapseRecovering = true
 	recovering = true
@@ -1539,15 +1429,7 @@ local MineStatus = MineTab:Paragraph({
 	Desc = "waiting...",
 })
 
-SellTab:Toggle({
-	Title = "Auto Sell (lava)",
-	Desc = "Sells at 42,14,-1239, returns to your exact spot",
-	Value = false,
-	Callback = function(state)
-		Toggles["AutoSell"] = state
-		if state then StartAutoSell() end
-	end
-})
+
 
 SellTab:Toggle({
 	Title = "SV Sell",
