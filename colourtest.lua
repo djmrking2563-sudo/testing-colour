@@ -327,18 +327,7 @@ local function StartAutoMine()
 		if bridge then bridge:Destroy() end
 	end)
 
-	-- 🚶 Walk forward 3.5 seconds
-	task.spawn(function()
-		local startTime = os.clock()
-		while Toggles["AutoMine"] and (os.clock() - startTime) < 3.5 do
-			local char = LocalPlayer.Character
-			local hrp = char and char:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * 0.5
-			end
-			task.wait(0.05)
-		end
-	end)
+
 
 	-- ⛏️ Then mine
 	task.spawn(function()
@@ -354,10 +343,10 @@ local function StartAutoMine()
 				if HumanoidRootPart then
 					local currentDepth = Toggles["LimitDepth"] and GetCurrentDepth() or nil
 					if currentDepth == nil or currentDepth < Depth then
-						local regionMin = HumanoidRootPart.CFrame + Vector3.new(-10,-10,-10)
-						local regionMax = HumanoidRootPart.CFrame + Vector3.new(10,10,10)
-						local region = Region3.new(regionMin.Position, regionMax.Position)
-						local parts = workspace:FindPartsInRegion3WithWhiteList(region, {game.Workspace.Blocks}, 100)
+	local regionMin = HumanoidRootPart.CFrame + Vector3.new(-1,-10,-1)
+	local regionMax = HumanoidRootPart.CFrame + Vector3.new(1,0,1)
+	local region = Region3.new(regionMin.Position, regionMax.Position)
+	local parts = workspace:FindPartsInRegion3WithWhiteList(region, {game.Workspace.Blocks}, 10)
 						for _, block in pairs(parts) do
 							if not Toggles["AutoMine"] then break end
 							if areaTransit or recovering or collapseRecovering then break end
