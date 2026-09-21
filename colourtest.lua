@@ -1265,7 +1265,14 @@ if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or 
 	print("[MS] Collapse detected (" .. tostring(reason) .. "). Moving forward for 7s then resuming...")
 	areaPhaseText = "collapsed: moving forward..."
 
-	task.spawn(function()
+		task.spawn(function()
+		-- capture where we were before collapse
+		local startPos = nil
+		pcall(function()
+			local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if h then startPos = h.Position end
+		end)
+
 		for _ = 1, 30 do
 			if gen ~= collapseGen then return end
 			task.wait(0.5)
@@ -1284,6 +1291,41 @@ if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or 
 			task.wait(0.5)
 		end
 		if gen ~= collapseGen then return end
+
+		-- === respawn guard ===
+		-- if our position changed massively since collapse started, we respawned.
+		-- teleport back to lastMineSpot instead of moving forward from spawn.
+		local afterPos = nil
+		pcall(function()
+			local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if h then afterPos = h.Position end
+		end)
+		if startPos and afterPos and (afterPos - startPos).Magnitude > 500 then
+			local target = lastMineSpot
+			if target then
+				areaPhaseText = "collapsed: respawned — teleporting back to mine..."
+				local t0 = os.clock()
+				repeat
+					local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+					if h then
+						h.Anchored = true
+						h.CFrame = CFrame.new(target)
+						task.wait(0.1)
+						h.Anchored = false
+					end
+					task.wait(0.2)
+				until os.clock() - t0 > 2 or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and (LocalPlayer.Character.HumanoidRootPart.Position - target).Magnitude < 15)
+			end
+			if gen ~= collapseGen then return end
+			collapseRecovering = false
+			recovering = false
+			areaTransit = false
+			TrackArea(true)
+			areaPhaseText = "recovered (respawn), resuming mining..."
+			print("[MS] Respawn recovery done. Teleported back to last mine spot.")
+			return
+		end
+		-- === end respawn guard ===
 
 		local MOVE_DURATION = 4
 		local MOVE_SPEED = 25
