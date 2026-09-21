@@ -1,6 +1,6 @@
 local LocalPlayer = game.Players.LocalPlayer
 local SELL_TRESHOLD = getgenv().SellTreshold
-if type(SELL_TRESHOLD) ~= "number" or not (SELL_TRESHOLD > 0) then SELL_TRESHOLD = 2500000 end
+if type(SELL_TRESHOLD) ~= "number" or not (SELL_TRESHOLD > 0) then SELL_TRESHOLD = 600000 end
 local SellTreshold = (type(getgenv().SellTreshold) == "number" and getgenv().SellTreshold > 0) and getgenv().SellTreshold or 200
 local Depth = getgenv().Depth or 205
 getgenv().SellTreshold = SELL_TRESHOLD
