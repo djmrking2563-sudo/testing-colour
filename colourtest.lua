@@ -334,23 +334,28 @@ local function StartAutoMine()
 
 		local bridge = workspace:FindFirstChild("MS_AreaBridge")
 		if bridge then bridge:Destroy() end
-		end)
+	end)
 
 	-- 🚶 Walk forward for 4 seconds first
 	task.spawn(function()
 		local WALK_DURATION = 4
-		local WALK_SPEED = 20
-		local startedAt = os.clock()
 		areaPhaseText = "automine: walking forward..."
 
+		local char = LocalPlayer.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.WalkSpeed = 20
+			hum:Move(hum.MoveDirection, true) -- doesn't matter, we set direction below
+		end
+
+		local startedAt = os.clock()
 		while os.clock() - startedAt < WALK_DURATION do
 			if not Toggles["AutoMine"] then return end
-			local char = LocalPlayer.Character
-			local hrp = char and char:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				pcall(function() hrp.Anchored = false end)
-				local forwardDir = hrp.CFrame.LookVector
-				hrp.CFrame = hrp.CFrame + forwardDir * (WALK_SPEED * 0.05)
+			local c = LocalPlayer.Character
+			local h = c and c:FindFirstChildOfClass("Humanoid")
+			if h then
+				h.WalkSpeed = 20
+				h:Move(Vector3.new(0, 0, -1), true)
 			end
 			task.wait(0.05)
 		end
@@ -358,9 +363,10 @@ local function StartAutoMine()
 		if Toggles["AutoMine"] then areaPhaseText = "automine: mining..." end
 	end)
 
-	-- ⛏️ Then mine
+	-- ⛏️ Then mine (starts after 4s walk)
 	task.spawn(function()
 		task.wait(4)
+
 		while Toggles["AutoMine"] do
 			if areaTransit or recovering or collapseRecovering then task.wait(0.3)
 			elseif buyPause then
@@ -396,7 +402,6 @@ local function StartAutoMine()
 		end
 	end)
 end
-
 local function StartFastMine()
 	task.spawn(function()
 		while Toggles["FastMine"] do
