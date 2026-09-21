@@ -553,27 +553,32 @@ local function StartAutoRebirth()
 	local curInv, curMax = GetInventoryAmount()
 	local triggerAt = SELL_TRESHOLD or curMax
 	if curInv and curMax and curMax > 0 and curInv >= triggerAt then
-		local SavedPosition = HumanoidRootPart.Position
+		local SavedPosition = HumanoidRootPart.CFrame
 		local SavedText = InventoryAmount and InventoryAmount.Text or ""
 		local sellStartTime = os.clock()
-		HopOntoSellPad()
-						while InventoryAmount and InventoryAmount.Text == SavedText
-							and os.clock() - sellStartTime < 5
-							and not recovering and not collapseRecovering
-						do
-							task.wait(0.15)
-						end
-						local freshChar = LocalPlayer.Character
-						local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
-						if freshHRP then
-							freshHRP.Anchored = true
-							freshHRP.CFrame = CFrame.new(SavedPosition)
-							task.wait(0.1)
-							freshHRP.Anchored = false
-						end
-						sellTrip = false
-					end
-					end
+		-- sell at the universal pad -116, 13, 38 (same as SV Sell)
+		while InventoryAmount and InventoryAmount.Text == SavedText
+			and os.clock() - sellStartTime < 15
+			and not recovering and not collapseRecovering
+		do
+			local c = LocalPlayer.Character
+			local h = c and c:FindFirstChild("HumanoidRootPart")
+			if not h then break end
+			h.CFrame = CFrame.new(-116, 13, 38)
+			Remote:FireServer("SellItems", {{}})
+			task.wait(0.1)
+		end
+		local freshChar = LocalPlayer.Character
+		local freshHRP = freshChar and freshChar:FindFirstChild("HumanoidRootPart")
+		if freshHRP then
+			freshHRP.Anchored = true
+			freshHRP.CFrame = SavedPosition
+			task.wait(0.1)
+			freshHRP.Anchored = false
+		end
+		sellTrip = false
+	end
+end
 					end
 				end
 				task.wait()
