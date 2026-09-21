@@ -1327,8 +1327,8 @@ if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or 
 		end
 		-- === end respawn guard ===
 
-		local MOVE_DURATION = 4
-		local MOVE_SPEED = 25
+		local MOVE_DURATION = 6
+		local MOVE_SPEED = 35
 		local startedAt = os.clock()
 
 		areaPhaseText = "collapsed: moving forward for " .. tostring(MOVE_DURATION) .. "s..."
@@ -1343,7 +1343,7 @@ if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or 
 				local forwardDir = hrp.CFrame.LookVector
 				hrp.CFrame = hrp.CFrame + forwardDir * (MOVE_SPEED * 0.05)
 				if hum then
-					hum.WalkSpeed = 0
+					hum.WalkSpeed = 5
 					hum.JumpPower = 0
 				end
 			end
