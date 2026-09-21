@@ -1354,7 +1354,7 @@ if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or 
 		-- === end respawn guard ===
 
 		local MOVE_DURATION = 4
-		local MOVE_SPEED = 25
+		local MOVE_SPEED = 27
 		local startedAt = os.clock()
 
 		areaPhaseText = "collapsed: moving forward for " .. tostring(MOVE_DURATION) .. "s..."
