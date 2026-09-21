@@ -212,8 +212,14 @@ local function GetInventoryAmount()
 	if not lbl or not lbl.Text then return 0, 0 end
 	-- handle commas, spaces, and any non-digit noise
 	local cleaned = tostring(lbl.Text):gsub(",", ""):gsub("%s+", "")
-	local cur, max = cleaned:match("(%d+)/(%d+)")
-	return tonumber(cur) or 0, tonumber(max) or 0
+	local curStr, maxStr = cleaned:match("([%d]+)/([%d]+)")
+	local cur = tonumber(curStr) or 0
+	local max = tonumber(maxStr)
+	-- if max isn't a number (e.g. "inf" with infinite backpack), use SELL_TRESHOLD or huge fallback
+	if not max then
+		max = SELL_TRESHOLD or math.huge
+	end
+	return cur, max
 end
 
 
