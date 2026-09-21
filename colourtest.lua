@@ -334,12 +334,33 @@ local function StartAutoMine()
 
 		local bridge = workspace:FindFirstChild("MS_AreaBridge")
 		if bridge then bridge:Destroy() end
+		end)
+
+	-- 🚶 Walk forward for 4 seconds first
+	task.spawn(function()
+		local WALK_DURATION = 4
+		local WALK_SPEED = 20
+		local startedAt = os.clock()
+		areaPhaseText = "automine: walking forward..."
+
+		while os.clock() - startedAt < WALK_DURATION do
+			if not Toggles["AutoMine"] then return end
+			local char = LocalPlayer.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				pcall(function() hrp.Anchored = false end)
+				local forwardDir = hrp.CFrame.LookVector
+				hrp.CFrame = hrp.CFrame + forwardDir * (WALK_SPEED * 0.05)
+			end
+			task.wait(0.05)
+		end
+
+		if Toggles["AutoMine"] then areaPhaseText = "automine: mining..." end
 	end)
-
-
 
 	-- ⛏️ Then mine
 	task.spawn(function()
+		task.wait(4)
 		while Toggles["AutoMine"] do
 			if areaTransit or recovering or collapseRecovering then task.wait(0.3)
 			elseif buyPause then
