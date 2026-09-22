@@ -117,8 +117,35 @@ end)
 
 local Remote = nil
 local function EnsureRemote()
+	if Remote and typeof(Remote) == "Instance" and Remote:IsA("RemoteEvent") then return Remote end
+
+	-- Priority 1: direct known path (Events.Char_Remote)
+	pcall(function()
+		local events = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
+		if events then
+			local cr = events:FindFirstChild("Char_Remote")
+			if cr and cr:IsA("RemoteEvent") then
+				Remote = cr
+				print("[MS] Remote found via Events.Char_Remote")
+			end
+		end
+	end)
 	if Remote then return Remote end
-	-- Priority 1: getsenv method (works in this game)
+
+	-- Priority 2: Network:InvokeServer() — we KNOW this returns (RemoteEvent, RemoteFunction)
+	pcall(function()
+		local Network = game:GetService("ReplicatedStorage"):FindFirstChild("Network")
+		if Network then
+			local a, b = Network:InvokeServer()
+			if typeof(a) == "Instance" and a:IsA("RemoteEvent") then
+				Remote = a
+				print("[MS] Remote found via Network.InvokeServer")
+			end
+		end
+	end)
+	if Remote then return Remote end
+
+	-- Priority 3: getsenv method (as before)
 	pcall(function()
 		local ClientScript = LocalPlayer.PlayerGui:FindFirstChild("ScreenGui") and LocalPlayer.PlayerGui.ScreenGui:FindFirstChild("ClientScript")
 		if ClientScript and getsenv and getupvalue then
@@ -127,26 +154,13 @@ local function EnsureRemote()
 			if Values and typeof(Values["RemoteEvent"]) == "Instance" and Values["RemoteEvent"]:IsA("RemoteEvent") then
 				Remote = Values["RemoteEvent"]
 				print("[MS] Remote found via getsenv")
-				return Remote
 			end
 		end
 	end)
-	-- Priority 2: Network InvokeServer (fallback)
-	pcall(function()
-		local Network = game:GetService("ReplicatedStorage"):WaitForChild("Network", 5)
-		if Network then
-			local a, b = Network:InvokeServer()
-			if typeof(a) == "Instance" and a:IsA("RemoteEvent") then
-				Remote = a
-			elseif typeof(b) == "Instance" and b:IsA("RemoteEvent") then
-				Remote = b
-			end
-		end
-	end)
+
 	return Remote
 end
-EnsureRemote()
-pcall(function()
+EnsureRemote()pcall(function()
 	local VU = game:GetService("VirtualUser")
 	LocalPlayer.Idled:Connect(function()
 		VU:CaptureController()
