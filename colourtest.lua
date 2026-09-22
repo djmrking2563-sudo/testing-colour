@@ -1394,7 +1394,7 @@ local target = lastMineSpot
 		end
 		-- === end respawn guard ===
 
-				local MOVE_DURATION = 4
+						local MOVE_DURATION = 5
 		local MOVE_SPEED = 25
 		local startedAt = os.clock()
 
@@ -1403,19 +1403,16 @@ local target = lastMineSpot
 
 		local moveChar = LocalPlayer.Character
 		local moveHRP = moveChar and moveChar:FindFirstChild("HumanoidRootPart")
-		local moveStart = moveHRP and moveHRP.Position or nil
 		local moveDir = moveHRP and moveHRP.CFrame.LookVector or Vector3.new(0, 0, -1)
 		moveDir = Vector3.new(moveDir.X, 0, moveDir.Z)
 		if moveDir.Magnitude < 0.01 then moveDir = Vector3.new(0, 0, -1) end
 		moveDir = moveDir.Unit
-		local maxDist = 10
 
 		while gen == collapseGen and (os.clock() - startedAt) < MOVE_DURATION do
 			local char = LocalPlayer.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			if hrp and moveStart then
-				if (hrp.Position - moveStart).Magnitude >= maxDist then break end
+			if hrp then
 				pcall(function() hrp.Anchored = false end)
 				hrp.CFrame = hrp.CFrame + moveDir * (MOVE_SPEED * 0.05)
 				if hum then
