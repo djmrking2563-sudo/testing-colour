@@ -574,7 +574,10 @@ local function StartAutoRebirth()
 							Remote:FireServer("MineBlock", {{block.Parent}})
 							task.wait()
 						end
-												if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
+																		if #parts > 0 and HumanoidRootPart.Position.Y < 50 then
+							lastMineSpot = HumanoidRootPart.Position
+							TrackArea()
+						end
 																																											if sellTrip then task.wait(0.3) else
 	local curInv, curMax = GetInventoryAmount()
 	local triggerAt = SELL_TRESHOLD or curMax
@@ -1326,8 +1329,9 @@ if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or 
 			local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 			if h then afterPos = h.Position end
 		end)
-		if startPos and afterPos and (afterPos - startPos).Magnitude > 500 then
-			local target = lastMineSpot
+		local onSurface = afterPos and afterPos.Y > 50 and lastMineSpot and lastMineSpot.Y < 50
+		if onSurface or (startPos and afterPos and (afterPos - startPos).Magnitude > 500) then			
+local target = lastMineSpot
 			if target then
 				areaPhaseText = "collapsed: respawned — teleporting back to mine..."
 				local t0 = os.clock()
