@@ -389,8 +389,7 @@ local function StartAutoMine()
 							Remote:FireServer("MineBlock",{{block.Parent}})
 							task.wait()
 						end
-						if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
-					else
+if #parts > 0 and HumanoidRootPart.Position.Y < 50 then lastMineSpot = HumanoidRootPart.Position TrackArea() end					else
 						task.wait(0.5)
 					end
 				end
@@ -424,8 +423,7 @@ local function StartFastMine()
 							Remote:FireServer("MineBlock", {{block.Parent}})
 							task.wait()
 						end
-						if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
-					end
+if #parts > 0 and HumanoidRootPart.Position.Y < 50 then lastMineSpot = HumanoidRootPart.Position TrackArea() end					end
 			else
 				task.wait(1)
 			end
@@ -1691,7 +1689,7 @@ task.spawn(function()
 			local sellTxt = SELL_TRESHOLD == nil and "FULL" or tostring(SELL_TRESHOLD)
 			MineStatus:SetDesc(string.format("depth %s / target %s", tostring(curDepth), tostring(Depth)))
 			if os.clock() >= sellEchoUntil then
-				SellStatus:SetDesc(string.format("inv %s/%s | threshold %s", tostring(curInv), tostring(maxInv), sellTxt))
+				SellStatus:SetDesc(string.format("inv %s/%s | threshold %s", tostring(curInav), tostring(maxInv), sellTxt))
 			end
 			if os.clock() >= depthEchoUntil then
 				MiscStatus:SetDesc(string.format("depth %s / target %s | coins %s | rebirth %s", tostring(curDepth), tostring(Depth), tostring(GetCoinsAmount()), tostring(rebirthPhaseText)))
