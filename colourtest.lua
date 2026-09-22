@@ -163,7 +163,8 @@ local Toggles = getgenv().__MS_Toggles or {
 	AutoRebirth = false,
 	RebirthOnly = false,
 	LimitDepth = false,
-	SVSell = false
+	SVSell = false,
+	AutoDig = false
 }
 for k in pairs(Toggles) do Toggles[k] = false end
 getgenv().__MS_Toggles = Toggles
@@ -433,7 +434,45 @@ if #parts > 0 and HumanoidRootPart.Position.Y < 50 then lastMineSpot = HumanoidR
 	end)
 end
 
-local svSellLoopGen = 0
+local function StartAutoDig()
+	task.spawn(function()
+		while Toggles["AutoDig"] do
+			if areaTransit or recovering or collapseRecovering then task.wait(0.3)
+			elseif buyPause then
+				if os.clock() - buyPauseAt > 8 then buyPause = false else task.wait(0.3) end
+			else
+			if not Remote then EnsureRemote() end
+			if Remote then
+				local Character = LocalPlayer.Character
+				local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+				if HumanoidRootPart then
+					local minp = HumanoidRootPart.CFrame.Position - Vector3.new(10, 10, 10)
+					local maxp = HumanoidRootPart.CFrame.Position + Vector3.new(10, 10, 10)
+					local region = Region3.new(minp, maxp)
+					local parts = workspace:FindPartsInRegion3WithWhiteList(region, {game.Workspace.Blocks}, 100)
+					for _, block in ipairs(parts) do
+						if not Toggles["AutoDig"] then break end
+						if areaTransit or recovering or collapseRecovering then break end
+						if block:IsA("BasePart") then
+							Remote:FireServer("MineBlock", {{block.Parent}})
+							task.wait()
+						end
+					end
+					if #parts > 0 and HumanoidRootPart.Position.Y < 50 then
+						lastMineSpot = HumanoidRootPart.Position
+						TrackArea()
+					end
+				end
+			else
+				task.wait(1)
+			end
+			task.wait()
+			end
+		end
+	end)
+end
+
+local svSellLoopGen = 0 
 local function StartSVSell()
 	svSellLoopGen = svSellLoopGen + 1
 	local gen = svSellLoopGen
@@ -1355,21 +1394,30 @@ local target = lastMineSpot
 		end
 		-- === end respawn guard ===
 
-		local MOVE_DURATION = 4
+				local MOVE_DURATION = 4
 		local MOVE_SPEED = 25
 		local startedAt = os.clock()
 
 		areaPhaseText = "collapsed: moving forward for " .. tostring(MOVE_DURATION) .. "s..."
 		print("[MS] Moving forward for " .. tostring(MOVE_DURATION) .. " seconds...")
 
+		local moveChar = LocalPlayer.Character
+		local moveHRP = moveChar and moveChar:FindFirstChild("HumanoidRootPart")
+		local moveStart = moveHRP and moveHRP.Position or nil
+		local moveDir = moveHRP and moveHRP.CFrame.LookVector or Vector3.new(0, 0, -1)
+		moveDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+		if moveDir.Magnitude < 0.01 then moveDir = Vector3.new(0, 0, -1) end
+		moveDir = moveDir.Unit
+		local maxDist = 10
+
 		while gen == collapseGen and (os.clock() - startedAt) < MOVE_DURATION do
 			local char = LocalPlayer.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			if hrp then
+			if hrp and moveStart then
+				if (hrp.Position - moveStart).Magnitude >= maxDist then break end
 				pcall(function() hrp.Anchored = false end)
-				local forwardDir = hrp.CFrame.LookVector
-				hrp.CFrame = hrp.CFrame + forwardDir * (MOVE_SPEED * 0.05)
+				hrp.CFrame = hrp.CFrame + moveDir * (MOVE_SPEED * 0.05)
 				if hum then
 					hum.WalkSpeed = 0
 					hum.JumpPower = 0
@@ -1511,6 +1559,16 @@ SellTab:Toggle({
 	Callback = function(state)
 		Toggles["SVSell"] = state
 		if state then StartSVSell() end
+	end
+})
+
+SellTab:Toggle({
+	Title = "Auto Dig",
+	Desc = "20x20x20 aura mine (from the old Enercept script)",
+	Value = false,
+	Callback = function(state)
+		Toggles["AutoDig"] = state
+		if state then StartAutoDig() end
 	end
 })
 
@@ -1689,7 +1747,7 @@ task.spawn(function()
 			local sellTxt = SELL_TRESHOLD == nil and "FULL" or tostring(SELL_TRESHOLD)
 			MineStatus:SetDesc(string.format("depth %s / target %s", tostring(curDepth), tostring(Depth)))
 			if os.clock() >= sellEchoUntil then
-				SellStatus:SetDesc(string.format("inv %s/%s | threshold %s", tostring(curInav), tostring(maxInv), sellTxt))
+				SellStatus:SetDesc(string.format("inv %s/%s | threshold %s", tostring(curInv), tostring(maxInv), sellTxt))
 			end
 			if os.clock() >= depthEchoUntil then
 				MiscStatus:SetDesc(string.format("depth %s / target %s | coins %s | rebirth %s", tostring(curDepth), tostring(Depth), tostring(GetCoinsAmount()), tostring(rebirthPhaseText)))
