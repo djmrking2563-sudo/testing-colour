@@ -396,10 +396,10 @@ local function StartAutoMine()
 					local currentDepth = Toggles["LimitDepth"] and GetCurrentDepth() or nil
 			local basePos = HumanoidRootPart.Position
 	local allParts = {}
-	for layer = 0, 3 do
+	for layer = 0, 8 do
 		local yOff = -layer * 10
-		local rMin = basePos + Vector3.new(-10, yOff - 5, -10)
-		local rMax = basePos + Vector3.new(10, yOff + 5, 10)
+		local rMin = basePos + Vector3.new(-10, yOff - 10, -10)
+local rMax = basePos + Vector3.new(10, yOff + 10, 10)
 		local reg = Region3.new(rMin, rMax)
 		local layerParts = workspace:FindPartsInRegion3WithWhiteList(reg, {game.Workspace.Blocks}, 200)
 		for _, p in ipairs(layerParts) do
