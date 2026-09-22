@@ -379,11 +379,20 @@ local function StartAutoMine()
 				local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 				if HumanoidRootPart then
 					local currentDepth = Toggles["LimitDepth"] and GetCurrentDepth() or nil
-					if currentDepth == nil or currentDepth < Depth then
-	local regionMin = HumanoidRootPart.CFrame + Vector3.new(-10,-10,-10)
-	local regionMax = HumanoidRootPart.CFrame + Vector3.new(10,10,10)
-	local region = Region3.new(regionMin.Position, regionMax.Position)
-	local parts = workspace:FindPartsInRegion3WithWhiteList(region, {game.Workspace.Blocks}, 100)
+			local basePos = HumanoidRootPart.Position
+	local allParts = {}
+	for layer = 0, 3 do
+		local yOff = -layer * 10
+		local rMin = basePos + Vector3.new(-10, yOff - 5, -10)
+		local rMax = basePos + Vector3.new(10, yOff + 5, 10)
+		local reg = Region3.new(rMin, rMax)
+		local layerParts = workspace:FindPartsInRegion3WithWhiteList(reg, {game.Workspace.Blocks}, 200)
+		for _, p in ipairs(layerParts) do
+			table.insert(allParts, p)
+		end
+	end
+	local parts = allParts
+	print("[MS-DEBUG] AutoMine parts found=", #parts)
 						for _, block in pairs(parts) do
 							if not Toggles["AutoMine"] then break end
 							if areaTransit or recovering or collapseRecovering then break end
