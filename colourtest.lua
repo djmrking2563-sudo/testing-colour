@@ -364,7 +364,7 @@ local function StartAutoMine()
 		if Toggles["AutoMine"] then areaPhaseText = "automine: mining..." end
 	end)
 
-	-- ⛏️ Then mine (starts after 4s walk)
+		-- ⛏️ Then mine (starts after 4s walk)
 	task.spawn(function()
 		task.wait(4)
 
@@ -380,10 +380,10 @@ local function StartAutoMine()
 				if HumanoidRootPart then
 					local currentDepth = Toggles["LimitDepth"] and GetCurrentDepth() or nil
 					if currentDepth == nil or currentDepth < Depth then
-	local regionMin = HumanoidRootPart.CFrame + Vector3.new(-1,-10,-1)
-	local regionMax = HumanoidRootPart.CFrame + Vector3.new(1,0,1)
+	local regionMin = HumanoidRootPart.CFrame + Vector3.new(-10,-10,-10)
+	local regionMax = HumanoidRootPart.CFrame + Vector3.new(10,10,10)
 	local region = Region3.new(regionMin.Position, regionMax.Position)
-	local parts = workspace:FindPartsInRegion3WithWhiteList(region, {game.Workspace.Blocks}, 10)
+	local parts = workspace:FindPartsInRegion3WithWhiteList(region, {game.Workspace.Blocks}, 100)
 						for _, block in pairs(parts) do
 							if not Toggles["AutoMine"] then break end
 							if areaTransit or recovering or collapseRecovering then break end
@@ -1517,15 +1517,14 @@ local AreasTab = Window:Tab({ Title = "Areas", Icon = "map" })
 
 
 MineTab:Toggle({
-	Title = "Auto Mine (straight down)",
-	Desc = "Mines -1,-10,-1 straight down like AutoRebirth dig",
+	Title = "Auto Mine",
+	Desc = "20x20x20 aura mine after 4s walk",
 	Value = false,
 	Callback = function(state)
 		Toggles["AutoMine"] = state
 		if state then StartAutoMine() end
 	end
 })
-
 MineTab:Toggle({
 	Title = "Fast Mine (aura)",
 	Desc = "Mines everything in 5,5,5 around you",
