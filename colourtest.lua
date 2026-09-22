@@ -117,35 +117,8 @@ end)
 
 local Remote = nil
 local function EnsureRemote()
-	if Remote and typeof(Remote) == "Instance" and Remote:IsA("RemoteEvent") then return Remote end
-
-	-- Priority 1: direct known path (Events.Char_Remote)
-	pcall(function()
-		local events = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
-		if events then
-			local cr = events:FindFirstChild("Char_Remote")
-			if cr and cr:IsA("RemoteEvent") then
-				Remote = cr
-				print("[MS] Remote found via Events.Char_Remote")
-			end
-		end
-	end)
 	if Remote then return Remote end
-
-	-- Priority 2: Network:InvokeServer() — we KNOW this returns (RemoteEvent, RemoteFunction)
-	pcall(function()
-		local Network = game:GetService("ReplicatedStorage"):FindFirstChild("Network")
-		if Network then
-			local a, b = Network:InvokeServer()
-			if typeof(a) == "Instance" and a:IsA("RemoteEvent") then
-				Remote = a
-				print("[MS] Remote found via Network.InvokeServer")
-			end
-		end
-	end)
-	if Remote then return Remote end
-
-	-- Priority 3: getsenv method (as before)
+	-- Priority 1: getsenv method (works in this game)
 	pcall(function()
 		local ClientScript = LocalPlayer.PlayerGui:FindFirstChild("ScreenGui") and LocalPlayer.PlayerGui.ScreenGui:FindFirstChild("ClientScript")
 		if ClientScript and getsenv and getupvalue then
@@ -154,10 +127,22 @@ local function EnsureRemote()
 			if Values and typeof(Values["RemoteEvent"]) == "Instance" and Values["RemoteEvent"]:IsA("RemoteEvent") then
 				Remote = Values["RemoteEvent"]
 				print("[MS] Remote found via getsenv")
+				return Remote
 			end
 		end
 	end)
-
+	-- Priority 2: Network InvokeServer (fallback)
+	pcall(function()
+		local Network = game:GetService("ReplicatedStorage"):WaitForChild("Network", 5)
+		if Network then
+			local a, b = Network:InvokeServer()
+			if typeof(a) == "Instance" and a:IsA("RemoteEvent") then
+				Remote = a
+			elseif typeof(b) == "Instance" and b:IsA("RemoteEvent") then
+				Remote = b
+			end
+		end
+	end)
 	return Remote
 end
 EnsureRemote()
@@ -178,8 +163,7 @@ local Toggles = getgenv().__MS_Toggles or {
 	AutoRebirth = false,
 	RebirthOnly = false,
 	LimitDepth = false,
-	SVSell = false,
-	AutoDig = false
+	SVSell = false
 }
 for k in pairs(Toggles) do Toggles[k] = false end
 getgenv().__MS_Toggles = Toggles
@@ -379,7 +363,7 @@ local function StartAutoMine()
 		if Toggles["AutoMine"] then areaPhaseText = "automine: mining..." end
 	end)
 
-		-- ⛏️ Then mine (starts after 4s walk)
+	-- ⛏️ Then mine (starts after 4s walk)
 	task.spawn(function()
 		task.wait(4)
 
@@ -394,27 +378,19 @@ local function StartAutoMine()
 				local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 				if HumanoidRootPart then
 					local currentDepth = Toggles["LimitDepth"] and GetCurrentDepth() or nil
-			local basePos = HumanoidRootPart.Position
-	local allParts = {}
-	for layer = 0, 8 do
-		local yOff = -layer * 10
-		local rMin = basePos + Vector3.new(-10, yOff - 10, -10)
-local rMax = basePos + Vector3.new(10, yOff + 10, 10)
-		local reg = Region3.new(rMin, rMax)
-		local layerParts = workspace:FindPartsInRegion3WithWhiteList(reg, {game.Workspace.Blocks}, 200)
-		for _, p in ipairs(layerParts) do
-			table.insert(allParts, p)
-		end
-	end
-	local parts = allParts
-	print("[MS-DEBUG] AutoMine parts found=", #parts)
+					if currentDepth == nil or currentDepth < Depth then
+	local regionMin = HumanoidRootPart.CFrame + Vector3.new(-1,-10,-1)
+	local regionMax = HumanoidRootPart.CFrame + Vector3.new(1,0,1)
+	local region = Region3.new(regionMin.Position, regionMax.Position)
+	local parts = workspace:FindPartsInRegion3WithWhiteList(region, {game.Workspace.Blocks}, 10)
 						for _, block in pairs(parts) do
 							if not Toggles["AutoMine"] then break end
 							if areaTransit or recovering or collapseRecovering then break end
 							Remote:FireServer("MineBlock",{{block.Parent}})
 							task.wait()
 						end
-if #parts > 0 and HumanoidRootPart.Position.Y < 50 then lastMineSpot = HumanoidRootPart.Position TrackArea() end					else
+						if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
+					else
 						task.wait(0.5)
 					end
 				end
@@ -448,7 +424,8 @@ local function StartFastMine()
 							Remote:FireServer("MineBlock", {{block.Parent}})
 							task.wait()
 						end
-if #parts > 0 and HumanoidRootPart.Position.Y < 50 then lastMineSpot = HumanoidRootPart.Position TrackArea() end					end
+						if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
+					end
 			else
 				task.wait(1)
 			end
@@ -458,45 +435,7 @@ if #parts > 0 and HumanoidRootPart.Position.Y < 50 then lastMineSpot = HumanoidR
 	end)
 end
 
-local function StartAutoDig()
-	task.spawn(function()
-		while Toggles["AutoDig"] do
-			if areaTransit or recovering or collapseRecovering then task.wait(0.3)
-			elseif buyPause then
-				if os.clock() - buyPauseAt > 8 then buyPause = false else task.wait(0.3) end
-			else
-			if not Remote then EnsureRemote() end
-			if Remote then
-				local Character = LocalPlayer.Character
-				local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-				if HumanoidRootPart then
-					local minp = HumanoidRootPart.CFrame.Position - Vector3.new(10, 10, 10)
-					local maxp = HumanoidRootPart.CFrame.Position + Vector3.new(10, 10, 10)
-					local region = Region3.new(minp, maxp)
-					local parts = workspace:FindPartsInRegion3WithWhiteList(region, {game.Workspace.Blocks}, 100)
-					for _, block in ipairs(parts) do
-						if not Toggles["AutoDig"] then break end
-						if areaTransit or recovering or collapseRecovering then break end
-						if block:IsA("BasePart") then
-							Remote:FireServer("MineBlock", {{block.Parent}})
-							task.wait()
-						end
-					end
-					if #parts > 0 and HumanoidRootPart.Position.Y < 50 then
-						lastMineSpot = HumanoidRootPart.Position
-						TrackArea()
-					end
-				end
-			else
-				task.wait(1)
-			end
-			task.wait()
-			end
-		end
-	end)
-end
-
-local svSellLoopGen = 0 
+local svSellLoopGen = 0
 local function StartSVSell()
 	svSellLoopGen = svSellLoopGen + 1
 	local gen = svSellLoopGen
@@ -635,10 +574,7 @@ local function StartAutoRebirth()
 							Remote:FireServer("MineBlock", {{block.Parent}})
 							task.wait()
 						end
-																		if #parts > 0 and HumanoidRootPart.Position.Y < 50 then
-							lastMineSpot = HumanoidRootPart.Position
-							TrackArea()
-						end
+												if #parts > 0 then lastMineSpot = HumanoidRootPart.Position TrackArea() end
 																																											if sellTrip then task.wait(0.3) else
 	local curInv, curMax = GetInventoryAmount()
 	local triggerAt = SELL_TRESHOLD or curMax
@@ -1390,9 +1326,8 @@ if not (Toggles["AutoMine"] or Toggles["FastMine"] or Toggles["AutoRebirth"] or 
 			local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 			if h then afterPos = h.Position end
 		end)
-		local onSurface = afterPos and afterPos.Y > 50 and lastMineSpot and lastMineSpot.Y < 50
-		if onSurface or (startPos and afterPos and (afterPos - startPos).Magnitude > 500) then			
-local target = lastMineSpot
+		if startPos and afterPos and (afterPos - startPos).Magnitude > 500 then
+			local target = lastMineSpot
 			if target then
 				areaPhaseText = "collapsed: respawned — teleporting back to mine..."
 				local t0 = os.clock()
@@ -1418,19 +1353,12 @@ local target = lastMineSpot
 		end
 		-- === end respawn guard ===
 
-						local MOVE_DURATION = 5
-		local MOVE_SPEED = 25
+		local MOVE_DURATION = 4
+		local MOVE_SPEED = 27
 		local startedAt = os.clock()
 
 		areaPhaseText = "collapsed: moving forward for " .. tostring(MOVE_DURATION) .. "s..."
 		print("[MS] Moving forward for " .. tostring(MOVE_DURATION) .. " seconds...")
-
-		local moveChar = LocalPlayer.Character
-		local moveHRP = moveChar and moveChar:FindFirstChild("HumanoidRootPart")
-		local moveDir = moveHRP and moveHRP.CFrame.LookVector or Vector3.new(0, 0, -1)
-		moveDir = Vector3.new(moveDir.X, 0, moveDir.Z)
-		if moveDir.Magnitude < 0.01 then moveDir = Vector3.new(0, 0, -1) end
-		moveDir = moveDir.Unit
 
 		while gen == collapseGen and (os.clock() - startedAt) < MOVE_DURATION do
 			local char = LocalPlayer.Character
@@ -1438,7 +1366,8 @@ local target = lastMineSpot
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
 			if hrp then
 				pcall(function() hrp.Anchored = false end)
-				hrp.CFrame = hrp.CFrame + moveDir * (MOVE_SPEED * 0.05)
+				local forwardDir = hrp.CFrame.LookVector
+				hrp.CFrame = hrp.CFrame + forwardDir * (MOVE_SPEED * 0.05)
 				if hum then
 					hum.WalkSpeed = 0
 					hum.JumpPower = 0
@@ -1538,14 +1467,15 @@ local AreasTab = Window:Tab({ Title = "Areas", Icon = "map" })
 
 
 MineTab:Toggle({
-	Title = "Auto Mine",
-	Desc = "20x20x20 aura mine after 4s walk",
+	Title = "Auto Mine (straight down)",
+	Desc = "Mines -1,-10,-1 straight down like AutoRebirth dig",
 	Value = false,
 	Callback = function(state)
 		Toggles["AutoMine"] = state
 		if state then StartAutoMine() end
 	end
 })
+
 MineTab:Toggle({
 	Title = "Fast Mine (aura)",
 	Desc = "Mines everything in 5,5,5 around you",
@@ -1579,16 +1509,6 @@ SellTab:Toggle({
 	Callback = function(state)
 		Toggles["SVSell"] = state
 		if state then StartSVSell() end
-	end
-})
-
-SellTab:Toggle({
-	Title = "Auto Dig",
-	Desc = "20x20x20 aura mine (from the old Enercept script)",
-	Value = false,
-	Callback = function(state)
-		Toggles["AutoDig"] = state
-		if state then StartAutoDig() end
 	end
 })
 
