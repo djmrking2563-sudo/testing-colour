@@ -160,7 +160,8 @@ local function EnsureRemote()
 
 	return Remote
 end
-EnsureRemote()pcall(function()
+EnsureRemote()
+pcall(function()
 	local VU = game:GetService("VirtualUser")
 	LocalPlayer.Idled:Connect(function()
 		VU:CaptureController()
