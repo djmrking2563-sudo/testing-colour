@@ -1358,7 +1358,7 @@ local target = lastMineSpot
 		-- === end respawn guard ===
 
 		local MOVE_DURATION = 4
-		local MOVE_SPEED = 27
+		local MOVE_SPEED = 25
 		local startedAt = os.clock()
 
 		areaPhaseText = "collapsed: moving forward for " .. tostring(MOVE_DURATION) .. "s..."
